@@ -16,11 +16,15 @@ exports.MetricsController = void 0;
 const common_1 = require("@nestjs/common");
 const metrics_service_1 = require("./metrics.service");
 const metrics_collector_service_1 = require("./metrics-collector.service");
+const alerts_service_1 = require("../websocket/alerts.service");
+const websocket_gateway_1 = require("../websocket/websocket.gateway");
 const query_metrics_dto_1 = require("./dto/query-metrics.dto");
 let MetricsController = class MetricsController {
-    constructor(metricsService, metricsCollectorService) {
+    constructor(metricsService, metricsCollectorService, alertsService, webSocketGateway) {
         this.metricsService = metricsService;
         this.metricsCollectorService = metricsCollectorService;
+        this.alertsService = alertsService;
+        this.webSocketGateway = webSocketGateway;
     }
     getCurrentMetrics() {
         return this.metricsService.getCurrentMetrics();
@@ -64,6 +68,18 @@ let MetricsController = class MetricsController {
     getCollectorStatus() {
         return this.metricsCollectorService.getStatus();
     }
+    getAlertHistory(limit = '50') {
+        return this.alertsService.getAlertHistory(parseInt(limit, 10));
+    }
+    getAlertThresholds() {
+        return this.alertsService.getThresholds();
+    }
+    getAlertStats() {
+        return this.alertsService.getStats();
+    }
+    getWebSocketClients() {
+        return this.webSocketGateway.getConnectedClientsInfo();
+    }
     async saveCurrentMetrics() {
         const metrics = this.metricsService.getCurrentMetrics();
         return this.metricsService.saveMetrics(metrics);
@@ -94,6 +110,30 @@ let MetricsController = class MetricsController {
         return {
             message: 'Metrics collector stopped',
             status: this.metricsCollectorService.getStatus(),
+        };
+    }
+    async triggerTestAlerts() {
+        await this.metricsCollectorService.triggerTestAlerts();
+        return {
+            message: 'Test alerts triggered - check real-time feed',
+            timestamp: new Date().toISOString(),
+        };
+    }
+    clearAlertCooldowns() {
+        this.alertsService.clearCooldowns();
+        return {
+            message: 'Alert cooldowns cleared',
+            timestamp: new Date().toISOString(),
+        };
+    }
+    broadcastNotification(body) {
+        this.webSocketGateway.broadcastNotification({
+            message: body.message,
+            type: body.type || 'info',
+        });
+        return {
+            message: 'Notification broadcasted',
+            timestamp: new Date().toISOString(),
         };
     }
     async cleanupOldMetrics(days = '30') {
@@ -153,6 +193,31 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], MetricsController.prototype, "getCollectorStatus", null);
 __decorate([
+    (0, common_1.Get)('alerts/history'),
+    __param(0, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], MetricsController.prototype, "getAlertHistory", null);
+__decorate([
+    (0, common_1.Get)('alerts/thresholds'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], MetricsController.prototype, "getAlertThresholds", null);
+__decorate([
+    (0, common_1.Get)('alerts/stats'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], MetricsController.prototype, "getAlertStats", null);
+__decorate([
+    (0, common_1.Get)('websocket/clients'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], MetricsController.prototype, "getWebSocketClients", null);
+__decorate([
     (0, common_1.Post)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
@@ -184,6 +249,25 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], MetricsController.prototype, "stopCollector", null);
 __decorate([
+    (0, common_1.Post)('alerts/test'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "triggerTestAlerts", null);
+__decorate([
+    (0, common_1.Post)('alerts/clear-cooldowns'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], MetricsController.prototype, "clearAlertCooldowns", null);
+__decorate([
+    (0, common_1.Post)('websocket/notification'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], MetricsController.prototype, "broadcastNotification", null);
+__decorate([
     (0, common_1.Post)('cleanup'),
     __param(0, (0, common_1.Query)('days')),
     __metadata("design:type", Function),
@@ -193,6 +277,8 @@ __decorate([
 exports.MetricsController = MetricsController = __decorate([
     (0, common_1.Controller)('metrics'),
     __metadata("design:paramtypes", [metrics_service_1.MetricsService,
-        metrics_collector_service_1.MetricsCollectorService])
+        metrics_collector_service_1.MetricsCollectorService,
+        alerts_service_1.AlertsService,
+        websocket_gateway_1.WebSocketGateway])
 ], MetricsController);
 //# sourceMappingURL=metrics.controller.js.map

@@ -9,13 +9,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebSocketModule = void 0;
 const common_1 = require("@nestjs/common");
 const websocket_gateway_1 = require("./websocket.gateway");
+const alerts_service_1 = require("./alerts.service");
 let WebSocketModule = class WebSocketModule {
 };
 exports.WebSocketModule = WebSocketModule;
 exports.WebSocketModule = WebSocketModule = __decorate([
     (0, common_1.Module)({
-        providers: [websocket_gateway_1.WebSocketGateway],
-        exports: [websocket_gateway_1.WebSocketGateway],
+        providers: [websocket_gateway_1.WebSocketGateway, alerts_service_1.AlertsService],
+        exports: [websocket_gateway_1.WebSocketGateway, alerts_service_1.AlertsService],
     })
 ], WebSocketModule);
 //# sourceMappingURL=websocket.module.js.map

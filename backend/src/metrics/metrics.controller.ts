@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Body, Query, ValidationPipe, Param } from '@nestjs/common';
 import { MetricsService } from './metrics.service';
 import { MetricsCollectorService } from './metrics-collector.service';
+import { AlertsService } from '../websocket/alerts.service';
+import { WebSocketGateway } from '../websocket/websocket.gateway';
 import { CreateMetricDto } from './dto/create-metric.dto';
 import { QueryMetricsDto } from './dto/query-metrics.dto';
 
@@ -9,6 +11,8 @@ export class MetricsController {
   constructor(
     private readonly metricsService: MetricsService,
     private readonly metricsCollectorService: MetricsCollectorService,
+    private readonly alertsService: AlertsService,
+    private readonly webSocketGateway: WebSocketGateway,
   ) {}
 
   @Get()
@@ -74,6 +78,26 @@ export class MetricsController {
     return this.metricsCollectorService.getStatus();
   }
 
+  @Get('alerts/history')
+  getAlertHistory(@Query('limit') limit: string = '50') {
+    return this.alertsService.getAlertHistory(parseInt(limit, 10));
+  }
+
+  @Get('alerts/thresholds')
+  getAlertThresholds() {
+    return this.alertsService.getThresholds();
+  }
+
+  @Get('alerts/stats')
+  getAlertStats() {
+    return this.alertsService.getStats();
+  }
+
+  @Get('websocket/clients')
+  getWebSocketClients() {
+    return this.webSocketGateway.getConnectedClientsInfo();
+  }
+
   @Post()
   async saveCurrentMetrics() {
     const metrics = this.metricsService.getCurrentMetrics();
@@ -113,6 +137,36 @@ export class MetricsController {
     return {
       message: 'Metrics collector stopped',
       status: this.metricsCollectorService.getStatus(),
+    };
+  }
+
+  @Post('alerts/test')
+  async triggerTestAlerts() {
+    await this.metricsCollectorService.triggerTestAlerts();
+    return {
+      message: 'Test alerts triggered - check real-time feed',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post('alerts/clear-cooldowns')
+  clearAlertCooldowns() {
+    this.alertsService.clearCooldowns();
+    return {
+      message: 'Alert cooldowns cleared',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post('websocket/notification')
+  broadcastNotification(@Body() body: { message: string; type?: string }) {
+    this.webSocketGateway.broadcastNotification({
+      message: body.message,
+      type: body.type || 'info',
+    });
+    return {
+      message: 'Notification broadcasted',
+      timestamp: new Date().toISOString(),
     };
   }
 

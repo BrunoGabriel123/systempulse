@@ -1,10 +1,14 @@
 import { MetricsService } from './metrics.service';
 import { MetricsCollectorService } from './metrics-collector.service';
+import { AlertsService } from '../websocket/alerts.service';
+import { WebSocketGateway } from '../websocket/websocket.gateway';
 import { QueryMetricsDto } from './dto/query-metrics.dto';
 export declare class MetricsController {
     private readonly metricsService;
     private readonly metricsCollectorService;
-    constructor(metricsService: MetricsService, metricsCollectorService: MetricsCollectorService);
+    private readonly alertsService;
+    private readonly webSocketGateway;
+    constructor(metricsService: MetricsService, metricsCollectorService: MetricsCollectorService, alertsService: AlertsService, webSocketGateway: WebSocketGateway);
     getCurrentMetrics(): import("./metrics.service").SystemMetrics;
     getFormattedMetrics(): {
         memory: {
@@ -53,6 +57,55 @@ export declare class MetricsController {
         collectionInterval: number;
         broadcastInterval: number;
         connectedClients: number;
+        alertStats: {
+            total: number;
+            last24h: number;
+            byLevel: Record<string, number>;
+            byMetric: Record<string, number>;
+            lastAlert: {
+                timestamp: Date;
+                level: string;
+                metric: string;
+                value: number;
+                message: string;
+            };
+        };
+    };
+    getAlertHistory(limit?: string): {
+        id: string;
+        timestamp: Date;
+        level: string;
+        metric: string;
+        value: number;
+        message: string;
+    }[];
+    getAlertThresholds(): import("../websocket/alerts.service").AlertThreshold[];
+    getAlertStats(): {
+        total: number;
+        last24h: number;
+        byLevel: Record<string, number>;
+        byMetric: Record<string, number>;
+        lastAlert: {
+            timestamp: Date;
+            level: string;
+            metric: string;
+            value: number;
+            message: string;
+        };
+    };
+    getWebSocketClients(): {
+        total: number;
+        clients: {
+            id: string;
+            connected: boolean;
+            handshake: {
+                address: string;
+                time: string;
+                headers: {
+                    'user-agent': string;
+                };
+            };
+        }[];
     };
     saveCurrentMetrics(): Promise<import("./metric.entity").Metric[]>;
     collectNow(): Promise<{
@@ -70,6 +123,19 @@ export declare class MetricsController {
             collectionInterval: number;
             broadcastInterval: number;
             connectedClients: number;
+            alertStats: {
+                total: number;
+                last24h: number;
+                byLevel: Record<string, number>;
+                byMetric: Record<string, number>;
+                lastAlert: {
+                    timestamp: Date;
+                    level: string;
+                    metric: string;
+                    value: number;
+                    message: string;
+                };
+            };
         };
     };
     stopCollector(): {
@@ -79,7 +145,35 @@ export declare class MetricsController {
             collectionInterval: number;
             broadcastInterval: number;
             connectedClients: number;
+            alertStats: {
+                total: number;
+                last24h: number;
+                byLevel: Record<string, number>;
+                byMetric: Record<string, number>;
+                lastAlert: {
+                    timestamp: Date;
+                    level: string;
+                    metric: string;
+                    value: number;
+                    message: string;
+                };
+            };
         };
+    };
+    triggerTestAlerts(): Promise<{
+        message: string;
+        timestamp: string;
+    }>;
+    clearAlertCooldowns(): {
+        message: string;
+        timestamp: string;
+    };
+    broadcastNotification(body: {
+        message: string;
+        type?: string;
+    }): {
+        message: string;
+        timestamp: string;
     };
     cleanupOldMetrics(days?: string): Promise<{
         deleted: number;

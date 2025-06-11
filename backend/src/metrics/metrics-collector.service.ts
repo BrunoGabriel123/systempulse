@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { MetricsService } from './metrics.service';
 import { WebSocketGateway } from '../websocket/websocket.gateway';
+import { AlertsService } from '../websocket/alerts.service';
 
 @Injectable()
 export class MetricsCollectorService implements OnModuleInit, OnModuleDestroy {
@@ -12,6 +13,7 @@ export class MetricsCollectorService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly metricsService: MetricsService,
     private readonly webSocketGateway: WebSocketGateway,
+    private readonly alertsService: AlertsService,
   ) {}
 
   onModuleInit() {
@@ -46,12 +48,23 @@ export class MetricsCollectorService implements OnModuleInit, OnModuleDestroy {
     this.broadcastInterval = setInterval(() => {
       try {
         const metrics = this.metricsService.getCurrentMetrics();
+        
+        // Check for alerts
+        const alerts = this.alertsService.checkMetrics(metrics);
+        
+        // Broadcast metrics
         this.webSocketGateway.broadcastMetrics({
           type: 'metrics_update',
           data: metrics,
           timestamp: new Date().toISOString(),
         });
-        this.logger.debug('Real-time metrics broadcasted');
+
+        // Broadcast alerts if any
+        alerts.forEach(alert => {
+          this.webSocketGateway.broadcastAlert(alert);
+        });
+
+        this.logger.debug(`Real-time metrics broadcasted${alerts.length > 0 ? ` with ${alerts.length} alerts` : ''}`);
       } catch (error) {
         this.logger.error(`Failed to broadcast metrics: ${error.message}`);
       }
@@ -82,6 +95,9 @@ export class MetricsCollectorService implements OnModuleInit, OnModuleDestroy {
     const metrics = this.metricsService.getCurrentMetrics();
     await this.metricsService.saveMetrics(metrics);
     
+    // Check for alerts
+    const alerts = this.alertsService.checkMetrics(metrics);
+    
     // Broadcast immediately
     this.webSocketGateway.broadcastMetrics({
       type: 'metrics_update',
@@ -89,7 +105,12 @@ export class MetricsCollectorService implements OnModuleInit, OnModuleDestroy {
       timestamp: new Date().toISOString(),
     });
 
-    this.logger.log('Manual metrics collection triggered');
+    // Broadcast alerts if any
+    alerts.forEach(alert => {
+      this.webSocketGateway.broadcastAlert(alert);
+    });
+
+    this.logger.log(`Manual metrics collection triggered${alerts.length > 0 ? ` with ${alerts.length} alerts` : ''}`);
   }
 
   // Get collection status
@@ -99,6 +120,25 @@ export class MetricsCollectorService implements OnModuleInit, OnModuleDestroy {
       collectionInterval: 30000, // 30 seconds
       broadcastInterval: 2000,   // 2 seconds
       connectedClients: this.webSocketGateway.getConnectedClientsCount(),
+      alertStats: this.alertsService.getStats(),
     };
+  }
+
+  // Trigger test alerts
+  async triggerTestAlerts() {
+    this.logger.log('Triggering test alerts...');
+    
+    // Simulate high load temporarily
+    this.metricsService.simulateLoad('high');
+    
+    // Wait a moment then collect
+    setTimeout(async () => {
+      await this.collectNow();
+      
+      // Reset to normal after test
+      setTimeout(() => {
+        this.metricsService.simulateLoad('low');
+      }, 5000);
+    }, 1000);
   }
 }

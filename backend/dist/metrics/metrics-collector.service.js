@@ -13,10 +13,12 @@ exports.MetricsCollectorService = void 0;
 const common_1 = require("@nestjs/common");
 const metrics_service_1 = require("./metrics.service");
 const websocket_gateway_1 = require("../websocket/websocket.gateway");
+const alerts_service_1 = require("../websocket/alerts.service");
 let MetricsCollectorService = class MetricsCollectorService {
-    constructor(metricsService, webSocketGateway) {
+    constructor(metricsService, webSocketGateway, alertsService) {
         this.metricsService = metricsService;
         this.webSocketGateway = webSocketGateway;
+        this.alertsService = alertsService;
         this.logger = new common_1.Logger('MetricsCollectorService');
         this.isCollecting = false;
     }
@@ -46,12 +48,16 @@ let MetricsCollectorService = class MetricsCollectorService {
         this.broadcastInterval = setInterval(() => {
             try {
                 const metrics = this.metricsService.getCurrentMetrics();
+                const alerts = this.alertsService.checkMetrics(metrics);
                 this.webSocketGateway.broadcastMetrics({
                     type: 'metrics_update',
                     data: metrics,
                     timestamp: new Date().toISOString(),
                 });
-                this.logger.debug('Real-time metrics broadcasted');
+                alerts.forEach(alert => {
+                    this.webSocketGateway.broadcastAlert(alert);
+                });
+                this.logger.debug(`Real-time metrics broadcasted${alerts.length > 0 ? ` with ${alerts.length} alerts` : ''}`);
             }
             catch (error) {
                 this.logger.error(`Failed to broadcast metrics: ${error.message}`);
@@ -75,12 +81,16 @@ let MetricsCollectorService = class MetricsCollectorService {
     async collectNow() {
         const metrics = this.metricsService.getCurrentMetrics();
         await this.metricsService.saveMetrics(metrics);
+        const alerts = this.alertsService.checkMetrics(metrics);
         this.webSocketGateway.broadcastMetrics({
             type: 'metrics_update',
             data: metrics,
             timestamp: new Date().toISOString(),
         });
-        this.logger.log('Manual metrics collection triggered');
+        alerts.forEach(alert => {
+            this.webSocketGateway.broadcastAlert(alert);
+        });
+        this.logger.log(`Manual metrics collection triggered${alerts.length > 0 ? ` with ${alerts.length} alerts` : ''}`);
     }
     getStatus() {
         return {
@@ -88,13 +98,25 @@ let MetricsCollectorService = class MetricsCollectorService {
             collectionInterval: 30000,
             broadcastInterval: 2000,
             connectedClients: this.webSocketGateway.getConnectedClientsCount(),
+            alertStats: this.alertsService.getStats(),
         };
+    }
+    async triggerTestAlerts() {
+        this.logger.log('Triggering test alerts...');
+        this.metricsService.simulateLoad('high');
+        setTimeout(async () => {
+            await this.collectNow();
+            setTimeout(() => {
+                this.metricsService.simulateLoad('low');
+            }, 5000);
+        }, 1000);
     }
 };
 exports.MetricsCollectorService = MetricsCollectorService;
 exports.MetricsCollectorService = MetricsCollectorService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [metrics_service_1.MetricsService,
-        websocket_gateway_1.WebSocketGateway])
+        websocket_gateway_1.WebSocketGateway,
+        alerts_service_1.AlertsService])
 ], MetricsCollectorService);
 //# sourceMappingURL=metrics-collector.service.js.map
