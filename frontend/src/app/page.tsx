@@ -1,15 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Activity, Server, Wifi, Cpu, HardDrive, MemoryStick, Network, Clock } from 'lucide-react'
+import { Activity, Server, Wifi, Cpu, HardDrive, MemoryStick, Network, Clock, BarChart3 } from 'lucide-react'
 import useWebSocket from '@/hooks/useWebSocket'
+import useMetricsHistory from '@/hooks/useMetricsHistory'
 import MetricCard from '@/components/dashboard/MetricCard'
 import AlertsPanel from '@/components/dashboard/AlertsPanel'
+import ChartsDashboard from '@/components/dashboard/ChartsDashboard'
 import { formatBytes, formatUptime, getStatusColor } from '@/lib/utils'
 
 export default function Home() {
   const { status, metrics, alerts, clearAlerts, sendMessage } = useWebSocket()
+  const { history: metricsHistory, getMetricTrend } = useMetricsHistory(metrics)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [showCharts, setShowCharts] = useState(false)
 
   useEffect(() => {
     // Update time every second
@@ -52,36 +56,53 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="text-right">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                {currentTime.toLocaleString('pt-BR')}
-              </div>
-              <div className="flex items-center space-x-2 mt-1">
-                <div className={`w-2 h-2 rounded-full ${
-                  status.connected ? 'bg-green-500' : 
-                  status.connecting ? 'bg-yellow-500 animate-pulse' : 
-                  'bg-red-500'
-                }`} />
-                <span className={`text-sm font-medium ${getConnectionStatusColor()}`}>
-                  {getConnectionStatusText()}
+            <div className="flex items-center space-x-4">
+              {/* Charts Toggle */}
+              <button
+                onClick={() => setShowCharts(!showCharts)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                  showCharts 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
+                }`}
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {showCharts ? 'Ocultar Gráficos' : 'Mostrar Gráficos'}
                 </span>
-                {status.totalClients > 0 && (
-                  <span className="text-xs text-gray-500">
-                    ({status.totalClients} cliente{status.totalClients !== 1 ? 's' : ''})
+              </button>
+
+              <div className="text-right">
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {currentTime.toLocaleString('pt-BR')}
+                </div>
+                <div className="flex items-center space-x-2 mt-1">
+                  <div className={`w-2 h-2 rounded-full ${
+                    status.connected ? 'bg-green-500' : 
+                    status.connecting ? 'bg-yellow-500 animate-pulse' : 
+                    'bg-red-500'
+                  }`} />
+                  <span className={`text-sm font-medium ${getConnectionStatusColor()}`}>
+                    {getConnectionStatusText()}
                   </span>
+                  {status.totalClients > 0 && (
+                    <span className="text-xs text-gray-500">
+                      ({status.totalClients} cliente{status.totalClients !== 1 ? 's' : ''})
+                    </span>
+                  )}
+                </div>
+                {status.error && (
+                  <div className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    {status.error}
+                  </div>
                 )}
               </div>
-              {status.error && (
-                <div className="text-xs text-red-600 dark:text-red-400 mt-1">
-                  {status.error}
-                </div>
-              )}
             </div>
           </div>
         </header>
 
         {/* Connection Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <MetricCard
             title="Backend Status"
             value="Operacional"
@@ -106,9 +127,17 @@ export default function Home() {
             color={alerts.length > 0 ? 'red' : 'green'}
             subtitle={alerts.length > 0 ? 'Verificar alertas' : 'Sistema normal'}
           />
+
+          <MetricCard
+            title="Histórico"
+            value={metricsHistory.length}
+            icon={BarChart3}
+            color="purple"
+            subtitle={`${metricsHistory.length} pontos de dados`}
+          />
         </div>
 
-        {/* System Metrics */}
+        {/* System Metrics Cards */}
         {metrics ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <MetricCard
@@ -119,6 +148,7 @@ export default function Home() {
               icon={Cpu}
               color={getStatusColor(metrics.cpu.usage)}
               subtitle={`${metrics.cpu.cores} cores`}
+              trend={getMetricTrend('cpu.usage')}
             />
 
             <MetricCard
@@ -128,6 +158,7 @@ export default function Home() {
               icon={MemoryStick}
               color={getStatusColor(metrics.memory.usage)}
               subtitle={`Total: ${formatBytes(metrics.memory.total)}`}
+              trend={getMetricTrend('memory.usage')}
             />
 
             <MetricCard
@@ -137,6 +168,7 @@ export default function Home() {
               icon={HardDrive}
               color={getStatusColor(metrics.disk.usage)}
               subtitle={`Livre: ${formatBytes(metrics.disk.free)}`}
+              trend={getMetricTrend('disk.usage')}
             />
 
             <MetricCard
@@ -146,6 +178,7 @@ export default function Home() {
               icon={Network}
               color="blue"
               subtitle={`↓${metrics.network.download.toFixed(1)} ↑${metrics.network.upload.toFixed(1)} MB/s`}
+              trend={getMetricTrend('network.download')}
             />
           </div>
         ) : (
@@ -160,6 +193,24 @@ export default function Home() {
                 isLoading={true}
               />
             ))}
+          </div>
+        )}
+
+        {/* Charts Dashboard */}
+        {showCharts && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                📊 Gráficos em Tempo Real
+              </h2>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {metricsHistory.length} pontos de dados coletados
+              </div>
+            </div>
+            <ChartsDashboard 
+              metrics={metrics} 
+              metricsHistory={metricsHistory}
+            />
           </div>
         )}
 
@@ -207,6 +258,11 @@ export default function Home() {
                   <div className="text-sm text-gray-600 dark:text-gray-400">
                     Última atualização: {new Date(metrics.timestamp).toLocaleTimeString('pt-BR')}
                   </div>
+                  {metricsHistory.length > 0 && (
+                    <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                      Histórico: {metricsHistory.length} pontos • Tendências ativas
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -229,7 +285,7 @@ export default function Home() {
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               Debug Panel
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <button
                 onClick={() => sendMessage('ping')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -248,12 +304,26 @@ export default function Home() {
               >
                 Clear Alerts
               </button>
+              <button
+                onClick={() => setShowCharts(!showCharts)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+              >
+                Toggle Charts
+              </button>
             </div>
-            <div className="mt-4 text-xs">
-              <div>Connected: {status.connected ? 'Yes' : 'No'}</div>
-              <div>Client ID: {status.clientId || 'None'}</div>
-              <div>Total Clients: {status.totalClients}</div>
-              <div>Last Ping: {status.lastPing?.toLocaleTimeString() || 'Never'}</div>
+            <div className="mt-4 text-xs grid grid-cols-2 gap-4">
+              <div>
+                <div>Connected: {status.connected ? 'Yes' : 'No'}</div>
+                <div>Client ID: {status.clientId || 'None'}</div>
+                <div>Total Clients: {status.totalClients}</div>
+                <div>Last Ping: {status.lastPing?.toLocaleTimeString() || 'Never'}</div>
+              </div>
+              <div>
+                <div>Metrics History: {metricsHistory.length}</div>
+                <div>Show Charts: {showCharts ? 'Yes' : 'No'}</div>
+                <div>Active Alerts: {alerts.length}</div>
+                <div>CPU Trend: {metrics ? getMetricTrend('cpu.usage') : 'N/A'}</div>
+              </div>
             </div>
           </div>
         )}
