@@ -1,8 +1,16 @@
-import { NestFactory } from '@nestjs/core'; 
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  // Enable global validation
+  app.useGlobalPipes(new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    forbidNonWhitelisted: true,
+  }));
   
   // Enable CORS for frontend
   app.enableCors({
@@ -14,5 +22,6 @@ async function bootstrap() {
   await app.listen(port);
   
   console.log(`🚀 SystemPulse Backend running on port ${port}`);
+  console.log(`📊 Database connected and synchronized`);
 }
 bootstrap();

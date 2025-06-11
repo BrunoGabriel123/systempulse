@@ -1,4 +1,5 @@
 import { MetricsService } from './metrics.service';
+import { QueryMetricsDto } from './dto/query-metrics.dto';
 export declare class MetricsController {
     private readonly metricsService;
     constructor(metricsService: MetricsService);
@@ -37,4 +38,17 @@ export declare class MetricsController {
             upload: number;
         };
     };
+    getMetricsHistory(query: QueryMetricsDto): Promise<import("./metric.entity").Metric[]>;
+    getLatestMetrics(): Promise<import("./metric.entity").Metric[]>;
+    getAggregatedMetrics(metricType: string, interval: string, startDate: string, endDate: string): Promise<any[]>;
+    getStats(): Promise<{
+        total: number;
+        oldestTimestamp: Date;
+        newestTimestamp: Date;
+    }>;
+    saveCurrentMetrics(): Promise<import("./metric.entity").Metric[]>;
+    cleanupOldMetrics(days?: string): Promise<{
+        deleted: number;
+        message: string;
+    }>;
 }

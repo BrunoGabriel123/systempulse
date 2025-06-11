@@ -8,10 +8,14 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MetricsController = void 0;
 const common_1 = require("@nestjs/common");
 const metrics_service_1 = require("./metrics.service");
+const query_metrics_dto_1 = require("./dto/query-metrics.dto");
 let MetricsController = class MetricsController {
     constructor(metricsService) {
         this.metricsService = metricsService;
@@ -41,6 +45,31 @@ let MetricsController = class MetricsController {
             },
         };
     }
+    async getMetricsHistory(query) {
+        return this.metricsService.getMetrics(query);
+    }
+    async getLatestMetrics() {
+        return this.metricsService.getLatestMetrics();
+    }
+    async getAggregatedMetrics(metricType = 'all', interval = '1h', startDate, endDate) {
+        const start = startDate ? new Date(startDate) : new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const end = endDate ? new Date(endDate) : new Date();
+        return this.metricsService.getAggregatedMetrics(metricType, interval, start, end);
+    }
+    async getStats() {
+        return this.metricsService.getStats();
+    }
+    async saveCurrentMetrics() {
+        const metrics = this.metricsService.getCurrentMetrics();
+        return this.metricsService.saveMetrics(metrics);
+    }
+    async cleanupOldMetrics(days = '30') {
+        const olderThanDays = parseInt(days, 10);
+        return {
+            deleted: await this.metricsService.cleanOldMetrics(olderThanDays),
+            message: `Deleted metrics older than ${olderThanDays} days`,
+        };
+    }
 };
 exports.MetricsController = MetricsController;
 __decorate([
@@ -55,6 +84,48 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], MetricsController.prototype, "getFormattedMetrics", null);
+__decorate([
+    (0, common_1.Get)('history'),
+    __param(0, (0, common_1.Query)(new common_1.ValidationPipe({ transform: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [query_metrics_dto_1.QueryMetricsDto]),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "getMetricsHistory", null);
+__decorate([
+    (0, common_1.Get)('latest'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "getLatestMetrics", null);
+__decorate([
+    (0, common_1.Get)('aggregated'),
+    __param(0, (0, common_1.Query)('metricType')),
+    __param(1, (0, common_1.Query)('interval')),
+    __param(2, (0, common_1.Query)('startDate')),
+    __param(3, (0, common_1.Query)('endDate')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "getAggregatedMetrics", null);
+__decorate([
+    (0, common_1.Get)('stats'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "getStats", null);
+__decorate([
+    (0, common_1.Post)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "saveCurrentMetrics", null);
+__decorate([
+    (0, common_1.Post)('cleanup'),
+    __param(0, (0, common_1.Query)('days')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "cleanupOldMetrics", null);
 exports.MetricsController = MetricsController = __decorate([
     (0, common_1.Controller)('metrics'),
     __metadata("design:paramtypes", [metrics_service_1.MetricsService])
