@@ -21,6 +21,29 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
+    --input@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
@@ -60,7 +83,7 @@
 
 /* Custom styles for SystemPulse */
 .metric-card {
-  @apply bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-all duration-200;
+  @apply bg-card border border-border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200;
 }
 
 .status-online {
@@ -76,5 +99,141 @@
 }
 
 .chart-container {
-  @apply w-full h-64 p-4 bg-card rounded-lg border border-border;
+  @apply w-full p-2 sm:p-4 bg-card rounded-lg border border-border;
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .metric-card {
+    @apply p-3;
+  }
+  
+  .chart-container {
+    @apply p-2;
+    min-height: 200px;
+  }
+  
+  /* Responsive text sizes */
+  .text-responsive-lg {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+  
+  .text-responsive-base {
+    @apply text-sm sm:text-base;
+  }
+  
+  .text-responsive-sm {
+    @apply text-xs sm:text-sm;
+  }
+}
+
+/* Responsive grid layouts */
+.grid-responsive-1-2-4 {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6;
+}
+
+.grid-responsive-1-2-3 {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6;
+}
+
+.grid-responsive-1-2 {
+  @apply grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6;
+}
+
+/* Button responsive styles */
+.btn-responsive {
+  @apply px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base;
+}
+
+/* Container responsive padding */
+.container-responsive {
+  @apply px-4 sm:px-6 lg:px-8;
+}
+
+/* Hide elements on mobile */
+.mobile-hidden {
+  @apply hidden sm:block;
+}
+
+.mobile-only {
+  @apply block sm:hidden;
+}
+
+/* Chart responsive heights */
+.chart-height-sm {
+  height: 180px;
+}
+
+.chart-height-md {
+  height: 250px;
+}
+
+.chart-height-lg {
+  height: 300px;
+}
+
+@media (max-width: 640px) {
+  .chart-height-sm {
+    height: 150px;
+  }
+  
+  .chart-height-md {
+    height: 200px;
+  }
+  
+  .chart-height-lg {
+    height: 220px;
+  }
+}
+
+/* Improved scrollbar for mobile */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.7);
+}
+
+/* Animation improvements for mobile */
+@media (prefers-reduced-motion: reduce) {
+  .transition-all {
+    transition: none;
+  }
+  
+  .animate-pulse {
+    animation: none;
+  }
+}
+
+/* Touch-friendly buttons */
+.touch-target {
+  @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+}
+ 
+.safe-area-padding {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+ 
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
 }
