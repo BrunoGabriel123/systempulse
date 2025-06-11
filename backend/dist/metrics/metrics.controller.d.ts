@@ -1,8 +1,10 @@
 import { MetricsService } from './metrics.service';
+import { MetricsCollectorService } from './metrics-collector.service';
 import { QueryMetricsDto } from './dto/query-metrics.dto';
 export declare class MetricsController {
     private readonly metricsService;
-    constructor(metricsService: MetricsService);
+    private readonly metricsCollectorService;
+    constructor(metricsService: MetricsService, metricsCollectorService: MetricsCollectorService);
     getCurrentMetrics(): import("./metrics.service").SystemMetrics;
     getFormattedMetrics(): {
         memory: {
@@ -46,7 +48,39 @@ export declare class MetricsController {
         oldestTimestamp: Date;
         newestTimestamp: Date;
     }>;
+    getCollectorStatus(): {
+        isCollecting: boolean;
+        collectionInterval: number;
+        broadcastInterval: number;
+        connectedClients: number;
+    };
     saveCurrentMetrics(): Promise<import("./metric.entity").Metric[]>;
+    collectNow(): Promise<{
+        message: string;
+        timestamp: string;
+    }>;
+    simulateLoad(type: 'low' | 'medium' | 'high'): Promise<{
+        message: string;
+        timestamp: string;
+    }>;
+    startCollector(): {
+        message: string;
+        status: {
+            isCollecting: boolean;
+            collectionInterval: number;
+            broadcastInterval: number;
+            connectedClients: number;
+        };
+    };
+    stopCollector(): {
+        message: string;
+        status: {
+            isCollecting: boolean;
+            collectionInterval: number;
+            broadcastInterval: number;
+            connectedClients: number;
+        };
+    };
     cleanupOldMetrics(days?: string): Promise<{
         deleted: number;
         message: string;

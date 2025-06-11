@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MetricsService } from './metrics.service';
 import { MetricsController } from './metrics.controller';
-import { MetricsRepository } from './metrics.repository'; 
+import { MetricsRepository } from './metrics.repository';
+import { MetricsCollectorService } from './metrics-collector.service';
+ 
 import { WebSocketModule } from '../websocket/websocket.module';
 import { Metric } from './metric.entity';
 
@@ -12,7 +14,7 @@ import { Metric } from './metric.entity';
     WebSocketModule,
   ],
   controllers: [MetricsController],
-  providers: [MetricsService, MetricsRepository],
-  exports: [MetricsService, MetricsRepository],
+  providers: [MetricsService, MetricsRepository, MetricsCollectorService],
+  exports: [MetricsService, MetricsRepository, MetricsCollectorService],
 })
 export class MetricsModule {}

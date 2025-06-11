@@ -35,21 +35,48 @@ export interface SystemMetrics {
 @Injectable()
 export class MetricsService {
   private logger = new Logger('MetricsService');
+  private lastMetrics: SystemMetrics;
+  private startTime = Date.now();
+
+  // Keep some state for realistic variations
+  private cpuBase = 20 + Math.random() * 30; // Base CPU usage 20-50%
+  private memoryBase = 30 + Math.random() * 20; // Base memory usage 30-50%
+  private diskBase = 40 + Math.random() * 20; // Base disk usage 40-60%
 
   constructor(private readonly metricsRepository: MetricsRepository) {}
 
-  // Generate mock system metrics (we'll replace with real data later)
+  // Generate realistic mock system metrics
   generateMockMetrics(): SystemMetrics {
     const timestamp = new Date().toISOString();
     
-    // Generate realistic mock data
-    const cpuUsage = Math.random() * 100;
+    // Generate realistic variations around base values
+    const cpuVariation = (Math.random() - 0.5) * 20; // ±10%
+    const memoryVariation = (Math.random() - 0.5) * 10; // ±5%
+    const diskVariation = (Math.random() - 0.5) * 2; // ±1%
+    
+    const cpuUsage = Math.max(0, Math.min(100, this.cpuBase + cpuVariation));
+    
     const memoryTotal = 16 * 1024 * 1024 * 1024; // 16GB
-    const memoryUsed = memoryTotal * (0.3 + Math.random() * 0.4); // 30-70% usage
+    const memoryUsagePercent = Math.max(10, Math.min(90, this.memoryBase + memoryVariation));
+    const memoryUsed = (memoryTotal * memoryUsagePercent) / 100;
+    
     const diskTotal = 500 * 1024 * 1024 * 1024; // 500GB
-    const diskUsed = diskTotal * (0.2 + Math.random() * 0.6); // 20-80% usage
+    const diskUsagePercent = Math.max(20, Math.min(80, this.diskBase + diskVariation));
+    const diskUsed = (diskTotal * diskUsagePercent) / 100;
 
-    return {
+    // Network with some realistic spikes
+    const networkMultiplier = Math.random() > 0.9 ? 5 : 1; // 10% chance of spike
+    const download = Math.random() * 50 * networkMultiplier; // 0-50 MB/s (up to 250 MB/s in spikes)
+    const upload = Math.random() * 20 * networkMultiplier; // 0-20 MB/s (up to 100 MB/s in spikes)
+
+    // System uptime (realistic)
+    const uptime = Math.floor((Date.now() - this.startTime) / 1000) + Math.floor(Math.random() * 86400 * 7); // Current session + up to 7 days
+
+    // Load averages (realistic for the CPU usage)
+    const loadBase = cpuUsage / 100 * 2; // Scale with CPU
+    const loadVariation = (Math.random() - 0.5) * 0.5;
+
+    this.lastMetrics = {
       timestamp,
       cpu: {
         usage: Number(cpuUsage.toFixed(1)),
@@ -57,35 +84,37 @@ export class MetricsService {
       },
       memory: {
         total: memoryTotal,
-        used: memoryUsed,
-        free: memoryTotal - memoryUsed,
-        usage: Number(((memoryUsed / memoryTotal) * 100).toFixed(1)),
+        used: Math.round(memoryUsed),
+        free: Math.round(memoryTotal - memoryUsed),
+        usage: Number(memoryUsagePercent.toFixed(1)),
       },
       disk: {
         total: diskTotal,
-        used: diskUsed,
-        free: diskTotal - diskUsed,
-        usage: Number(((diskUsed / diskTotal) * 100).toFixed(1)),
+        used: Math.round(diskUsed),
+        free: Math.round(diskTotal - diskUsed),
+        usage: Number(diskUsagePercent.toFixed(1)),
       },
       network: {
-        download: Number((Math.random() * 100).toFixed(1)), // MB/s
-        upload: Number((Math.random() * 50).toFixed(1)),    // MB/s
+        download: Number(download.toFixed(1)),
+        upload: Number(upload.toFixed(1)),
       },
       system: {
-        uptime: Math.floor(Math.random() * 86400), // seconds
+        uptime: uptime,
         loadAverage: [
-          Number((Math.random() * 2).toFixed(2)),
-          Number((Math.random() * 2).toFixed(2)),
-          Number((Math.random() * 2).toFixed(2)),
+          Number((loadBase + loadVariation).toFixed(2)),
+          Number((loadBase + loadVariation * 0.8).toFixed(2)),
+          Number((loadBase + loadVariation * 0.6).toFixed(2)),
         ],
       },
     };
+
+    return this.lastMetrics;
   }
 
   // Get current metrics
   getCurrentMetrics(): SystemMetrics {
     const metrics = this.generateMockMetrics();
-    this.logger.debug(`Generated metrics: CPU ${metrics.cpu.usage}%, Memory ${metrics.memory.usage}%`);
+    this.logger.debug(`Generated metrics: CPU ${metrics.cpu.usage}%, Memory ${metrics.memory.usage}%, Disk ${metrics.disk.usage}%`);
     return metrics;
   }
 
@@ -189,6 +218,28 @@ export class MetricsService {
   // Get database stats
   async getStats() {
     return this.metricsRepository.getMetricsStats();
+  }
+
+  // Adjust base values for testing different scenarios
+  simulateLoad(type: 'low' | 'medium' | 'high') {
+    switch (type) {
+      case 'low':
+        this.cpuBase = 10 + Math.random() * 20; // 10-30%
+        this.memoryBase = 20 + Math.random() * 20; // 20-40%
+        this.diskBase = 30 + Math.random() * 20; // 30-50%
+        break;
+      case 'medium':
+        this.cpuBase = 40 + Math.random() * 30; // 40-70%
+        this.memoryBase = 50 + Math.random() * 20; // 50-70%
+        this.diskBase = 50 + Math.random() * 20; // 50-70%
+        break;
+      case 'high':
+        this.cpuBase = 70 + Math.random() * 25; // 70-95%
+        this.memoryBase = 70 + Math.random() * 20; // 70-90%
+        this.diskBase = 70 + Math.random() * 20; // 70-90%
+        break;
+    }
+    this.logger.log(`Simulating ${type} load scenario`);
   }
 
   // Format bytes to human readable

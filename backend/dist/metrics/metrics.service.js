@@ -16,15 +16,30 @@ let MetricsService = class MetricsService {
     constructor(metricsRepository) {
         this.metricsRepository = metricsRepository;
         this.logger = new common_1.Logger('MetricsService');
+        this.startTime = Date.now();
+        this.cpuBase = 20 + Math.random() * 30;
+        this.memoryBase = 30 + Math.random() * 20;
+        this.diskBase = 40 + Math.random() * 20;
     }
     generateMockMetrics() {
         const timestamp = new Date().toISOString();
-        const cpuUsage = Math.random() * 100;
+        const cpuVariation = (Math.random() - 0.5) * 20;
+        const memoryVariation = (Math.random() - 0.5) * 10;
+        const diskVariation = (Math.random() - 0.5) * 2;
+        const cpuUsage = Math.max(0, Math.min(100, this.cpuBase + cpuVariation));
         const memoryTotal = 16 * 1024 * 1024 * 1024;
-        const memoryUsed = memoryTotal * (0.3 + Math.random() * 0.4);
+        const memoryUsagePercent = Math.max(10, Math.min(90, this.memoryBase + memoryVariation));
+        const memoryUsed = (memoryTotal * memoryUsagePercent) / 100;
         const diskTotal = 500 * 1024 * 1024 * 1024;
-        const diskUsed = diskTotal * (0.2 + Math.random() * 0.6);
-        return {
+        const diskUsagePercent = Math.max(20, Math.min(80, this.diskBase + diskVariation));
+        const diskUsed = (diskTotal * diskUsagePercent) / 100;
+        const networkMultiplier = Math.random() > 0.9 ? 5 : 1;
+        const download = Math.random() * 50 * networkMultiplier;
+        const upload = Math.random() * 20 * networkMultiplier;
+        const uptime = Math.floor((Date.now() - this.startTime) / 1000) + Math.floor(Math.random() * 86400 * 7);
+        const loadBase = cpuUsage / 100 * 2;
+        const loadVariation = (Math.random() - 0.5) * 0.5;
+        this.lastMetrics = {
             timestamp,
             cpu: {
                 usage: Number(cpuUsage.toFixed(1)),
@@ -32,33 +47,34 @@ let MetricsService = class MetricsService {
             },
             memory: {
                 total: memoryTotal,
-                used: memoryUsed,
-                free: memoryTotal - memoryUsed,
-                usage: Number(((memoryUsed / memoryTotal) * 100).toFixed(1)),
+                used: Math.round(memoryUsed),
+                free: Math.round(memoryTotal - memoryUsed),
+                usage: Number(memoryUsagePercent.toFixed(1)),
             },
             disk: {
                 total: diskTotal,
-                used: diskUsed,
-                free: diskTotal - diskUsed,
-                usage: Number(((diskUsed / diskTotal) * 100).toFixed(1)),
+                used: Math.round(diskUsed),
+                free: Math.round(diskTotal - diskUsed),
+                usage: Number(diskUsagePercent.toFixed(1)),
             },
             network: {
-                download: Number((Math.random() * 100).toFixed(1)),
-                upload: Number((Math.random() * 50).toFixed(1)),
+                download: Number(download.toFixed(1)),
+                upload: Number(upload.toFixed(1)),
             },
             system: {
-                uptime: Math.floor(Math.random() * 86400),
+                uptime: uptime,
                 loadAverage: [
-                    Number((Math.random() * 2).toFixed(2)),
-                    Number((Math.random() * 2).toFixed(2)),
-                    Number((Math.random() * 2).toFixed(2)),
+                    Number((loadBase + loadVariation).toFixed(2)),
+                    Number((loadBase + loadVariation * 0.8).toFixed(2)),
+                    Number((loadBase + loadVariation * 0.6).toFixed(2)),
                 ],
             },
         };
+        return this.lastMetrics;
     }
     getCurrentMetrics() {
         const metrics = this.generateMockMetrics();
-        this.logger.debug(`Generated metrics: CPU ${metrics.cpu.usage}%, Memory ${metrics.memory.usage}%`);
+        this.logger.debug(`Generated metrics: CPU ${metrics.cpu.usage}%, Memory ${metrics.memory.usage}%, Disk ${metrics.disk.usage}%`);
         return metrics;
     }
     async saveMetrics(systemMetrics) {
@@ -130,6 +146,26 @@ let MetricsService = class MetricsService {
     }
     async getStats() {
         return this.metricsRepository.getMetricsStats();
+    }
+    simulateLoad(type) {
+        switch (type) {
+            case 'low':
+                this.cpuBase = 10 + Math.random() * 20;
+                this.memoryBase = 20 + Math.random() * 20;
+                this.diskBase = 30 + Math.random() * 20;
+                break;
+            case 'medium':
+                this.cpuBase = 40 + Math.random() * 30;
+                this.memoryBase = 50 + Math.random() * 20;
+                this.diskBase = 50 + Math.random() * 20;
+                break;
+            case 'high':
+                this.cpuBase = 70 + Math.random() * 25;
+                this.memoryBase = 70 + Math.random() * 20;
+                this.diskBase = 70 + Math.random() * 20;
+                break;
+        }
+        this.logger.log(`Simulating ${type} load scenario`);
     }
     formatBytes(bytes) {
         const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];

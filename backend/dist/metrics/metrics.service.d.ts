@@ -31,6 +31,11 @@ export interface SystemMetrics {
 export declare class MetricsService {
     private readonly metricsRepository;
     private logger;
+    private lastMetrics;
+    private startTime;
+    private cpuBase;
+    private memoryBase;
+    private diskBase;
     constructor(metricsRepository: MetricsRepository);
     generateMockMetrics(): SystemMetrics;
     getCurrentMetrics(): SystemMetrics;
@@ -44,6 +49,7 @@ export declare class MetricsService {
         oldestTimestamp: Date;
         newestTimestamp: Date;
     }>;
+    simulateLoad(type: 'low' | 'medium' | 'high'): void;
     formatBytes(bytes: number): string;
     formatUptime(seconds: number): string;
 }

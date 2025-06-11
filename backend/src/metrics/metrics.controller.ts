@@ -1,11 +1,15 @@
-import { Controller, Get, Post, Body, Query, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, ValidationPipe, Param } from '@nestjs/common';
 import { MetricsService } from './metrics.service';
+import { MetricsCollectorService } from './metrics-collector.service';
 import { CreateMetricDto } from './dto/create-metric.dto';
 import { QueryMetricsDto } from './dto/query-metrics.dto';
 
 @Controller('metrics')
 export class MetricsController {
-  constructor(private readonly metricsService: MetricsService) {}
+  constructor(
+    private readonly metricsService: MetricsService,
+    private readonly metricsCollectorService: MetricsCollectorService,
+  ) {}
 
   @Get()
   getCurrentMetrics() {
@@ -65,10 +69,51 @@ export class MetricsController {
     return this.metricsService.getStats();
   }
 
+  @Get('collector/status')
+  getCollectorStatus() {
+    return this.metricsCollectorService.getStatus();
+  }
+
   @Post()
   async saveCurrentMetrics() {
     const metrics = this.metricsService.getCurrentMetrics();
     return this.metricsService.saveMetrics(metrics);
+  }
+
+  @Post('collect')
+  async collectNow() {
+    await this.metricsCollectorService.collectNow();
+    return {
+      message: 'Metrics collected and broadcasted successfully',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post('simulate/:type')
+  async simulateLoad(@Param('type') type: 'low' | 'medium' | 'high') {
+    this.metricsService.simulateLoad(type);
+    return {
+      message: `Simulating ${type} load scenario`,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post('collector/start')
+  startCollector() {
+    this.metricsCollectorService.startCollection();
+    return {
+      message: 'Metrics collector started',
+      status: this.metricsCollectorService.getStatus(),
+    };
+  }
+
+  @Post('collector/stop')
+  stopCollector() {
+    this.metricsCollectorService.stopCollection();
+    return {
+      message: 'Metrics collector stopped',
+      status: this.metricsCollectorService.getStatus(),
+    };
   }
 
   @Post('cleanup')

@@ -15,10 +15,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MetricsController = void 0;
 const common_1 = require("@nestjs/common");
 const metrics_service_1 = require("./metrics.service");
+const metrics_collector_service_1 = require("./metrics-collector.service");
 const query_metrics_dto_1 = require("./dto/query-metrics.dto");
 let MetricsController = class MetricsController {
-    constructor(metricsService) {
+    constructor(metricsService, metricsCollectorService) {
         this.metricsService = metricsService;
+        this.metricsCollectorService = metricsCollectorService;
     }
     getCurrentMetrics() {
         return this.metricsService.getCurrentMetrics();
@@ -59,9 +61,40 @@ let MetricsController = class MetricsController {
     async getStats() {
         return this.metricsService.getStats();
     }
+    getCollectorStatus() {
+        return this.metricsCollectorService.getStatus();
+    }
     async saveCurrentMetrics() {
         const metrics = this.metricsService.getCurrentMetrics();
         return this.metricsService.saveMetrics(metrics);
+    }
+    async collectNow() {
+        await this.metricsCollectorService.collectNow();
+        return {
+            message: 'Metrics collected and broadcasted successfully',
+            timestamp: new Date().toISOString(),
+        };
+    }
+    async simulateLoad(type) {
+        this.metricsService.simulateLoad(type);
+        return {
+            message: `Simulating ${type} load scenario`,
+            timestamp: new Date().toISOString(),
+        };
+    }
+    startCollector() {
+        this.metricsCollectorService.startCollection();
+        return {
+            message: 'Metrics collector started',
+            status: this.metricsCollectorService.getStatus(),
+        };
+    }
+    stopCollector() {
+        this.metricsCollectorService.stopCollection();
+        return {
+            message: 'Metrics collector stopped',
+            status: this.metricsCollectorService.getStatus(),
+        };
     }
     async cleanupOldMetrics(days = '30') {
         const olderThanDays = parseInt(days, 10);
@@ -114,11 +147,42 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MetricsController.prototype, "getStats", null);
 __decorate([
+    (0, common_1.Get)('collector/status'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], MetricsController.prototype, "getCollectorStatus", null);
+__decorate([
     (0, common_1.Post)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], MetricsController.prototype, "saveCurrentMetrics", null);
+__decorate([
+    (0, common_1.Post)('collect'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "collectNow", null);
+__decorate([
+    (0, common_1.Post)('simulate/:type'),
+    __param(0, (0, common_1.Param)('type')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "simulateLoad", null);
+__decorate([
+    (0, common_1.Post)('collector/start'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], MetricsController.prototype, "startCollector", null);
+__decorate([
+    (0, common_1.Post)('collector/stop'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], MetricsController.prototype, "stopCollector", null);
 __decorate([
     (0, common_1.Post)('cleanup'),
     __param(0, (0, common_1.Query)('days')),
@@ -128,6 +192,7 @@ __decorate([
 ], MetricsController.prototype, "cleanupOldMetrics", null);
 exports.MetricsController = MetricsController = __decorate([
     (0, common_1.Controller)('metrics'),
-    __metadata("design:paramtypes", [metrics_service_1.MetricsService])
+    __metadata("design:paramtypes", [metrics_service_1.MetricsService,
+        metrics_collector_service_1.MetricsCollectorService])
 ], MetricsController);
 //# sourceMappingURL=metrics.controller.js.map
