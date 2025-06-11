@@ -52,6 +52,70 @@ export declare class MetricsController {
         oldestTimestamp: Date;
         newestTimestamp: Date;
     }>;
+    getPerformanceStats(): {
+        server: {
+            uptime: number;
+            memoryUsage: NodeJS.MemoryUsage;
+            cpuUsage: NodeJS.CpuUsage;
+            nodeVersion: string;
+            platform: NodeJS.Platform;
+        };
+        websocket: {
+            total: number;
+            subscribersCount: number;
+            clients: {
+                id: string;
+                connected: boolean;
+                rooms: string[];
+                handshake: {
+                    address: string;
+                    time: string;
+                    headers: {
+                        'user-agent': string;
+                        origin: string;
+                    };
+                };
+            }[];
+            serverStats: {
+                uptime: number;
+                memoryUsage: NodeJS.MemoryUsage;
+                lastBroadcast: any;
+            };
+        };
+        collector: {
+            isCollecting: boolean;
+            collectionInterval: number;
+            broadcastInterval: number;
+            connectedClients: number;
+            alertStats: {
+                total: number;
+                last24h: number;
+                byLevel: Record<string, number>;
+                byMetric: Record<string, number>;
+                lastAlert: {
+                    timestamp: Date;
+                    level: string;
+                    metric: string;
+                    value: number;
+                    message: string;
+                };
+            };
+        };
+        alerts: {
+            total: number;
+            last24h: number;
+            byLevel: Record<string, number>;
+            byMetric: Record<string, number>;
+            lastAlert: {
+                timestamp: Date;
+                level: string;
+                metric: string;
+                value: number;
+                message: string;
+            };
+        };
+        timestamp: string;
+    };
     getCollectorStatus(): {
         isCollecting: boolean;
         collectionInterval: number;
@@ -95,17 +159,25 @@ export declare class MetricsController {
     };
     getWebSocketClients(): {
         total: number;
+        subscribersCount: number;
         clients: {
             id: string;
             connected: boolean;
+            rooms: string[];
             handshake: {
                 address: string;
                 time: string;
                 headers: {
                     'user-agent': string;
+                    origin: string;
                 };
             };
         }[];
+        serverStats: {
+            uptime: number;
+            memoryUsage: NodeJS.MemoryUsage;
+            lastBroadcast: any;
+        };
     };
     saveCurrentMetrics(): Promise<import("./metric.entity").Metric[]>;
     collectNow(): Promise<{
@@ -172,6 +244,10 @@ export declare class MetricsController {
         message: string;
         type?: string;
     }): {
+        message: string;
+        timestamp: string;
+    };
+    broadcastPerformanceMetrics(): {
         message: string;
         timestamp: string;
     };

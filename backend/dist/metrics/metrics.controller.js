@@ -65,6 +65,21 @@ let MetricsController = class MetricsController {
     async getStats() {
         return this.metricsService.getStats();
     }
+    getPerformanceStats() {
+        return {
+            server: {
+                uptime: process.uptime(),
+                memoryUsage: process.memoryUsage(),
+                cpuUsage: process.cpuUsage(),
+                nodeVersion: process.version,
+                platform: process.platform,
+            },
+            websocket: this.webSocketGateway.getConnectedClientsInfo(),
+            collector: this.metricsCollectorService.getStatus(),
+            alerts: this.alertsService.getStats(),
+            timestamp: new Date().toISOString(),
+        };
+    }
     getCollectorStatus() {
         return this.metricsCollectorService.getStatus();
     }
@@ -136,6 +151,13 @@ let MetricsController = class MetricsController {
             timestamp: new Date().toISOString(),
         };
     }
+    broadcastPerformanceMetrics() {
+        this.webSocketGateway.broadcastPerformanceMetrics();
+        return {
+            message: 'Performance metrics broadcasted',
+            timestamp: new Date().toISOString(),
+        };
+    }
     async cleanupOldMetrics(days = '30') {
         const olderThanDays = parseInt(days, 10);
         return {
@@ -186,6 +208,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], MetricsController.prototype, "getStats", null);
+__decorate([
+    (0, common_1.Get)('performance'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], MetricsController.prototype, "getPerformanceStats", null);
 __decorate([
     (0, common_1.Get)('collector/status'),
     __metadata("design:type", Function),
@@ -267,6 +295,12 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], MetricsController.prototype, "broadcastNotification", null);
+__decorate([
+    (0, common_1.Post)('websocket/performance-broadcast'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], MetricsController.prototype, "broadcastPerformanceMetrics", null);
 __decorate([
     (0, common_1.Post)('cleanup'),
     __param(0, (0, common_1.Query)('days')),

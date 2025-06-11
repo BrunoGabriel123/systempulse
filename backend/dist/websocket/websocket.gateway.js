@@ -20,6 +20,8 @@ let WebSocketGateway = class WebSocketGateway {
     constructor() {
         this.logger = new common_1.Logger('WebSocketGateway');
         this.connectedClients = new Map();
+        this.lastMetricsBroadcast = null;
+        this.metricsThrottleTime = 1000;
     }
     handleConnection(client) {
         this.connectedClients.set(client.id, client);
@@ -37,6 +39,9 @@ let WebSocketGateway = class WebSocketGateway {
             platform: process.platform,
             timestamp: new Date().toISOString(),
         });
+        if (this.lastMetricsBroadcast) {
+            client.emit('metrics_update', this.lastMetricsBroadcast);
+        }
     }
     handleDisconnect(client) {
         this.connectedClients.delete(client.id);
@@ -47,6 +52,7 @@ let WebSocketGateway = class WebSocketGateway {
             message: 'pong',
             timestamp: new Date().toISOString(),
             clientId: client.id,
+            serverUptime: process.uptime(),
         });
     }
     handleSubscribeMetrics(client, data) {
@@ -56,7 +62,11 @@ let WebSocketGateway = class WebSocketGateway {
             type: 'metrics',
             message: 'Successfully subscribed to real-time metrics',
             timestamp: new Date().toISOString(),
+            updateInterval: '2 seconds',
         });
+        if (this.lastMetricsBroadcast) {
+            client.emit('metrics_update', this.lastMetricsBroadcast);
+        }
     }
     handleUnsubscribeMetrics(client) {
         this.logger.log(`Client ${client.id} unsubscribed from metrics`);
@@ -68,19 +78,45 @@ let WebSocketGateway = class WebSocketGateway {
         });
     }
     handleRequestCurrentMetrics(client) {
-        client.emit('metrics_request_received', {
-            message: 'Metrics request received, sending current data...',
+        if (this.lastMetricsBroadcast) {
+            client.emit('metrics_update', this.lastMetricsBroadcast);
+            client.emit('metrics_request_fulfilled', {
+                message: 'Current metrics sent',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        else {
+            client.emit('metrics_request_fulfilled', {
+                message: 'No metrics available yet',
+                timestamp: new Date().toISOString(),
+            });
+        }
+    }
+    handleGetServerStats(client) {
+        const stats = {
+            connectedClients: this.connectedClients.size,
+            uptime: process.uptime(),
+            memoryUsage: process.memoryUsage(),
+            nodeVersion: process.version,
+            platform: process.platform,
             timestamp: new Date().toISOString(),
-        });
+        };
+        client.emit('server_stats', stats);
     }
     broadcastMetrics(data) {
-        const payload = {
+        const now = Date.now();
+        this.lastMetricsBroadcast = {
             ...data,
             timestamp: new Date().toISOString(),
             connectedClients: this.connectedClients.size,
+            serverUptime: process.uptime(),
         };
-        this.server.emit('metrics_update', payload);
-        this.server.to('metrics_subscribers').emit('metrics_realtime', payload);
+        this.server.emit('metrics_update', this.lastMetricsBroadcast);
+        this.server.to('metrics_subscribers').emit('metrics_realtime', {
+            ...this.lastMetricsBroadcast,
+            subscribersOnly: true,
+            broadcastTime: now,
+        });
         this.logger.debug(`Broadcasted metrics to ${this.connectedClients.size} clients`);
     }
     broadcastAlert(alert) {
@@ -88,18 +124,38 @@ let WebSocketGateway = class WebSocketGateway {
             ...alert,
             timestamp: new Date().toISOString(),
             type: 'system_alert',
+            priority: alert.data?.level === 'critical' ? 'high' : 'normal',
+            connectedClients: this.connectedClients.size,
         };
         this.server.emit('system_alert', payload);
-        this.logger.warn(`Broadcasted alert: ${alert.message}`);
+        if (payload.priority === 'high') {
+            this.server.emit('priority_alert', payload);
+        }
+        this.logger.warn(`Broadcasted ${alert.data?.level || 'unknown'} alert: ${alert.data?.message}`);
     }
     broadcastNotification(notification) {
         const payload = {
             ...notification,
             timestamp: new Date().toISOString(),
             type: 'notification',
+            connectedClients: this.connectedClients.size,
         };
         this.server.emit('notification', payload);
         this.logger.log(`Broadcasted notification: ${notification.message}`);
+    }
+    broadcastPerformanceMetrics() {
+        const perfMetrics = {
+            type: 'performance_metrics',
+            data: {
+                connectedClients: this.connectedClients.size,
+                serverUptime: process.uptime(),
+                memoryUsage: process.memoryUsage(),
+                cpuUsage: process.cpuUsage(),
+                nodeVersion: process.version,
+            },
+            timestamp: new Date().toISOString(),
+        };
+        this.server.emit('performance_update', perfMetrics);
     }
     getConnectedClientsCount() {
         return this.connectedClients.size;
@@ -108,18 +164,43 @@ let WebSocketGateway = class WebSocketGateway {
         const clients = Array.from(this.connectedClients.entries()).map(([id, socket]) => ({
             id,
             connected: socket.connected,
+            rooms: Array.from(socket.rooms),
             handshake: {
                 address: socket.handshake.address,
                 time: socket.handshake.time,
                 headers: {
                     'user-agent': socket.handshake.headers['user-agent'],
+                    'origin': socket.handshake.headers['origin'],
                 },
             },
         }));
         return {
             total: this.connectedClients.size,
+            subscribersCount: this.server.sockets.adapter.rooms.get('metrics_subscribers')?.size || 0,
             clients,
+            serverStats: {
+                uptime: process.uptime(),
+                memoryUsage: process.memoryUsage(),
+                lastBroadcast: this.lastMetricsBroadcast?.timestamp || null,
+            },
         };
+    }
+    sendToClient(clientId, event, data) {
+        const client = this.connectedClients.get(clientId);
+        if (client) {
+            client.emit(event, {
+                ...data,
+                timestamp: new Date().toISOString(),
+                targetClient: clientId,
+            });
+            return true;
+        }
+        return false;
+    }
+    cleanup() {
+        this.logger.log('Cleaning up WebSocket connections...');
+        this.connectedClients.clear();
+        this.lastMetricsBroadcast = null;
     }
 };
 exports.WebSocketGateway = WebSocketGateway;
@@ -156,6 +237,13 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket]),
     __metadata("design:returntype", void 0)
 ], WebSocketGateway.prototype, "handleRequestCurrentMetrics", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('get_server_stats'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket]),
+    __metadata("design:returntype", void 0)
+], WebSocketGateway.prototype, "handleGetServerStats", null);
 exports.WebSocketGateway = WebSocketGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {

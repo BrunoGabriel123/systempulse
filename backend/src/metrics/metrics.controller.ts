@@ -73,6 +73,23 @@ export class MetricsController {
     return this.metricsService.getStats();
   }
 
+  @Get('performance')
+  getPerformanceStats() {
+    return {
+      server: {
+        uptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+        cpuUsage: process.cpuUsage(),
+        nodeVersion: process.version,
+        platform: process.platform,
+      },
+      websocket: this.webSocketGateway.getConnectedClientsInfo(),
+      collector: this.metricsCollectorService.getStatus(),
+      alerts: this.alertsService.getStats(),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   @Get('collector/status')
   getCollectorStatus() {
     return this.metricsCollectorService.getStatus();
@@ -166,6 +183,15 @@ export class MetricsController {
     });
     return {
       message: 'Notification broadcasted',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post('websocket/performance-broadcast')
+  broadcastPerformanceMetrics() {
+    this.webSocketGateway.broadcastPerformanceMetrics();
+    return {
+      message: 'Performance metrics broadcasted',
       timestamp: new Date().toISOString(),
     };
   }
