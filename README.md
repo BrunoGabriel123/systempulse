@@ -208,7 +208,7 @@ Este projeto está sob a licença MIT. Veja [LICENSE](LICENSE) para mais detalhe
 
 **Bruno Gabriel**
 - GitHub: [@BrunoGabriel123](https://github.com/BrunoGabriel123)
-- LinkedIn: [Bruno Gabriel](https://linkedin.com/in/brunogabriel123)
+- LinkedIn: [Bruno Gabriel](https://www.linkedin.com/in/bruno-gabriel-ti/)
 
 ---
 
