@@ -60,7 +60,8 @@
 
 /* Custom styles for SystemPulse */
 .metric-card {
-  @apply bg-card border border-border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200;
+  @apply bg-card border border-border rounded-lg p-3 sm:p-4 lg:p-6 shadow-sm hover:shadow-md transition-all duration-200;
+  min-height: fit-content;
 }
 
 .status-online {
@@ -75,46 +76,84 @@
   @apply text-red-600 dark:text-red-400;
 }
 
-.chart-container {
-  @apply w-full p-2 sm:p-4 bg-card rounded-lg border border-border;
+/* Chart container fixes */
+.chart-wrapper {
+  @apply w-full h-full flex flex-col;
 }
 
-/* Mobile optimizations */
+.chart-content {
+  @apply flex-1 min-h-0;
+}
+
+/* Responsive chart heights */
+.chart-sm {
+  height: 180px;
+}
+
+.chart-md {
+  height: 250px;
+}
+
+.chart-lg {
+  height: 300px;
+}
+
 @media (max-width: 640px) {
+  .chart-sm {
+    height: 150px;
+  }
+  
+  .chart-md {
+    height: 200px;
+  }
+  
+  .chart-lg {
+    height: 220px;
+  }
+  
   .metric-card {
     @apply p-3;
   }
-  
-  .chart-container {
-    @apply p-2;
-    min-height: 200px;
+}
+
+@media (max-width: 768px) {
+  .chart-sm {
+    height: 160px;
   }
   
-  /* Responsive text sizes */
-  .text-responsive-lg {
-    @apply text-lg sm:text-xl lg:text-2xl;
+  .chart-md {
+    height: 220px;
   }
   
-  .text-responsive-base {
-    @apply text-sm sm:text-base;
-  }
-  
-  .text-responsive-sm {
-    @apply text-xs sm:text-sm;
+  .chart-lg {
+    height: 250px;
   }
 }
 
-/* Responsive grid layouts */
-.grid-responsive-1-2-4 {
-  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6;
+/* Grid responsive layouts */
+.grid-charts-1-2 {
+  @apply grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6;
 }
 
-.grid-responsive-1-2-3 {
-  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6;
+.grid-charts-1-2-3 {
+  @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6;
 }
 
-.grid-responsive-1-2 {
-  @apply grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6;
+.grid-charts-responsive {
+  @apply grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6;
+}
+
+/* Text responsive */
+.text-responsive-lg {
+  @apply text-base sm:text-lg lg:text-xl;
+}
+
+.text-responsive-base {
+  @apply text-sm sm:text-base;
+}
+
+.text-responsive-sm {
+  @apply text-xs sm:text-sm;
 }
 
 /* Button responsive styles */
@@ -136,34 +175,7 @@
   @apply block sm:hidden;
 }
 
-/* Chart responsive heights */
-.chart-height-sm {
-  height: 180px;
-}
-
-.chart-height-md {
-  height: 250px;
-}
-
-.chart-height-lg {
-  height: 300px;
-}
-
-@media (max-width: 640px) {
-  .chart-height-sm {
-    height: 150px;
-  }
-  
-  .chart-height-md {
-    height: 200px;
-  }
-  
-  .chart-height-lg {
-    height: 220px;
-  }
-}
-
-/* Improved scrollbar for mobile */
+/* Improved scrollbar */
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
@@ -187,7 +199,7 @@
   background-color: rgba(156, 163, 175, 0.7);
 }
 
-/* Animation improvements for mobile */
+/* Animation improvements */
 @media (prefers-reduced-motion: reduce) {
   .transition-all {
     transition: none;
@@ -203,11 +215,24 @@
   @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
 }
 
-/* Safe area for mobile devices */
-.safe-area-padding {
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
+/* Chart.js canvas fixes */
+canvas {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* Flex container for charts */
+.chart-flex-container {
+  @apply flex flex-col h-full;
+}
+
+.chart-flex-content {
+  @apply flex-1 relative;
+}
+
+/* Grid alignment fixes */
+.grid-equal-height > * {
+  @apply h-full;
 }
 
 /* Performance optimizations */
@@ -216,3 +241,4 @@
   backface-visibility: hidden;
   will-change: transform;
 }
+    

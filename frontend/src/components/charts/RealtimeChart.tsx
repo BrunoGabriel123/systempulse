@@ -11,10 +11,11 @@ import {
   Tooltip,
   Legend,
   Filler,
+  ChartData,
+  ChartOptions,
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import { SystemMetrics } from '@/hooks/useWebSocket'
-import { ChartData } from 'chart.js'
 
 ChartJS.register(
   CategoryScale,
@@ -47,24 +48,24 @@ const RealtimeChart: React.FC<RealtimeChartProps> = ({
   height = 300,
 }) => {
   const chartRef = useRef<ChartJS<'line'>>(null)
- const [chartData, setChartData] = useState<ChartData<'line'>>({
-  labels: [],
-  datasets: [
-    {
-      label: title,
-      data: [],
-      borderColor: color,
-      backgroundColor: `${color}20`,
-      borderWidth: 2,
-      fill: true,
-      tension: 0.4,
-      pointRadius: 0,
-      pointHoverRadius: 4,
-    },
-  ],
-})
+  const [chartData, setChartData] = useState<ChartData<'line'>>({
+    labels: [],
+    datasets: [
+      {
+        label: title,
+        data: [],
+        borderColor: color,
+        backgroundColor: `${color}20`,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+      },
+    ],
+  })
 
-  const options = {
+  const options: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
     animation: {
@@ -98,8 +99,11 @@ const RealtimeChart: React.FC<RealtimeChartProps> = ({
           color: 'rgba(0, 0, 0, 0.1)',
         },
         ticks: {
-          maxTicksLimit: 10,
+          maxTicksLimit: 8,
           color: '#6b7280',
+          font: {
+            size: 11,
+          },
         },
       },
       y: {
@@ -111,6 +115,9 @@ const RealtimeChart: React.FC<RealtimeChartProps> = ({
         },
         ticks: {
           color: '#6b7280',
+          font: {
+            size: 11,
+          },
           callback: function (value: any) {
             return `${value}${unit}`
           },
@@ -152,24 +159,36 @@ const RealtimeChart: React.FC<RealtimeChartProps> = ({
       labels,
       datasets: [
         {
-          ...chartData.datasets[0],
+          label: title,
           data,
+          borderColor: color,
+          backgroundColor: `${color}20`,
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
         },
       ],
     })
-  }, [metrics, dataKey])
+  }, [metrics, dataKey, title, color])
 
   return (
-    <div className="chart-container" style={{ height: `${height}px` }}>
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+    <div className="w-full">
+      <div className="mb-3">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
           {title}
         </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
           Últimos 60 segundos
         </p>
       </div>
-      <Line ref={chartRef} data={chartData} options={options} />
+      <div 
+        className="w-full bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-2 sm:p-4"
+        style={{ height: `${height}px` }}
+      >
+        <Line ref={chartRef} data={chartData} options={options} />
+      </div>
     </div>
   )
 }
