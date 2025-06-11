@@ -1,10 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Activity, Server, Wifi } from 'lucide-react'
+import { Activity, Server, Wifi, Cpu, HardDrive, MemoryStick, Network, Clock } from 'lucide-react'
+import useWebSocket from '@/hooks/useWebSocket'
+import MetricCard from '@/components/dashboard/MetricCard'
+import AlertsPanel from '@/components/dashboard/AlertsPanel'
+import { formatBytes, formatUptime, getStatusColor } from '@/lib/utils'
 
 export default function Home() {
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting')
+  const { status, metrics, alerts, clearAlerts, sendMessage } = useWebSocket()
   const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => {
@@ -13,16 +17,20 @@ export default function Home() {
       setCurrentTime(new Date())
     }, 1000)
 
-    // Simulate connection (we'll implement real WebSocket in next commit)
-    const connectTimer = setTimeout(() => {
-      setConnectionStatus('connected')
-    }, 2000)
-
-    return () => {
-      clearInterval(timer)
-      clearTimeout(connectTimer)
-    }
+    return () => clearInterval(timer)
   }, [])
+
+  const getConnectionStatusColor = () => {
+    if (status.connected) return 'status-online'
+    if (status.connecting) return 'status-warning'
+    return 'status-critical'
+  }
+
+  const getConnectionStatusText = () => {
+    if (status.connected) return '✓ Conectado'
+    if (status.connecting) return '⏳ Conectando...'
+    return '❌ Desconectado'
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
@@ -50,101 +58,205 @@ export default function Home() {
               </div>
               <div className="flex items-center space-x-2 mt-1">
                 <div className={`w-2 h-2 rounded-full ${
-                  connectionStatus === 'connected' ? 'bg-green-500' : 
-                  connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 
+                  status.connected ? 'bg-green-500' : 
+                  status.connecting ? 'bg-yellow-500 animate-pulse' : 
                   'bg-red-500'
                 }`} />
-                <span className="text-sm font-medium">
-                  {connectionStatus === 'connected' ? 'Conectado' : 
-                   connectionStatus === 'connecting' ? 'Conectando...' : 
-                   'Desconectado'}
+                <span className={`text-sm font-medium ${getConnectionStatusColor()}`}>
+                  {getConnectionStatusText()}
                 </span>
+                {status.totalClients > 0 && (
+                  <span className="text-xs text-gray-500">
+                    ({status.totalClients} cliente{status.totalClients !== 1 ? 's' : ''})
+                  </span>
+                )}
               </div>
+              {status.error && (
+                <div className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  {status.error}
+                </div>
+              )}
             </div>
           </div>
         </header>
 
-        {/* Status Cards */}
+        {/* Connection Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="metric-card">
-            <div className="flex items-center space-x-3">
-              <Server className="h-8 w-8 text-blue-600" />
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">
-                  Backend Status
-                </h3>
-                <p className="text-sm text-green-600 dark:text-green-400">
-                  ✓ Operacional
-                </p>
-              </div>
-            </div>
-          </div>
+          <MetricCard
+            title="Backend Status"
+            value="Operacional"
+            icon={Server}
+            color="green"
+            subtitle="API funcionando"
+          />
 
-          <div className="metric-card">
-            <div className="flex items-center space-x-3">
-              <Wifi className="h-8 w-8 text-green-600" />
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">
-                  WebSocket
-                </h3>
-                <p className={`text-sm ${
-                  connectionStatus === 'connected' ? 'text-green-600 dark:text-green-400' : 
-                  'text-yellow-600 dark:text-yellow-400'
-                }`}>
-                  {connectionStatus === 'connected' ? '✓ Conectado' : '⏳ Conectando...'}
-                </p>
-              </div>
-            </div>
-          </div>
+          <MetricCard
+            title="WebSocket"
+            value={status.connected ? 'Conectado' : status.connecting ? 'Conectando' : 'Desconectado'}
+            icon={Wifi}
+            color={status.connected ? 'green' : status.connecting ? 'yellow' : 'red'}
+            subtitle={status.clientId ? `ID: ${status.clientId.substring(0, 8)}` : 'Aguardando conexão'}
+            isLoading={status.connecting}
+          />
 
-          <div className="metric-card">
-            <div className="flex items-center space-x-3">
-              <Activity className="h-8 w-8 text-purple-600" />
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">
-                  Sistema
-                </h3>
-                <p className="text-sm text-blue-600 dark:text-blue-400">
-                  📊 Monitorando
-                </p>
-              </div>
-            </div>
-          </div>
+          <MetricCard
+            title="Alertas Ativos"
+            value={alerts.length}
+            icon={Activity}
+            color={alerts.length > 0 ? 'red' : 'green'}
+            subtitle={alerts.length > 0 ? 'Verificar alertas' : 'Sistema normal'}
+          />
         </div>
 
-        {/* Welcome Message */}
-        <div className="metric-card text-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Bem-vindo ao SystemPulse! 🚀
-          </h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
-            Seu dashboard de monitoramento de sistema está configurado e pronto para uso.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-              <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">
-                ✅ Configurado
-              </h3>
-              <ul className="text-sm text-blue-700 dark:text-blue-400 space-y-1">
-                <li>• Next.js 14 com TypeScript</li>
-                <li>• Tailwind CSS para styling</li>
-                <li>• Layout responsivo</li>
-                <li>• Tema escuro/claro</li>
-              </ul>
+        {/* System Metrics */}
+        {metrics ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <MetricCard
+              title="CPU"
+              value={metrics.cpu.usage}
+              unit="%"
+              percentage={metrics.cpu.usage}
+              icon={Cpu}
+              color={getStatusColor(metrics.cpu.usage)}
+              subtitle={`${metrics.cpu.cores} cores`}
+            />
+
+            <MetricCard
+              title="Memória"
+              value={formatBytes(metrics.memory.used)}
+              percentage={metrics.memory.usage}
+              icon={MemoryStick}
+              color={getStatusColor(metrics.memory.usage)}
+              subtitle={`Total: ${formatBytes(metrics.memory.total)}`}
+            />
+
+            <MetricCard
+              title="Disco"
+              value={formatBytes(metrics.disk.used)}
+              percentage={metrics.disk.usage}
+              icon={HardDrive}
+              color={getStatusColor(metrics.disk.usage)}
+              subtitle={`Livre: ${formatBytes(metrics.disk.free)}`}
+            />
+
+            <MetricCard
+              title="Rede"
+              value={metrics.network.download + metrics.network.upload}
+              unit="MB/s"
+              icon={Network}
+              color="blue"
+              subtitle={`↓${metrics.network.download.toFixed(1)} ↑${metrics.network.upload.toFixed(1)} MB/s`}
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <MetricCard
+                key={i}
+                title="Carregando..."
+                value="--"
+                icon={Activity}
+                color="blue"
+                isLoading={true}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* System Info & Alerts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* System Information */}
+          <div className="metric-card">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Informações do Sistema
+            </h2>
+            {metrics ? (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">Uptime</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {formatUptime(metrics.system.uptime)}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <Activity className="h-5 w-5 text-green-600" />
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">Load Average</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {metrics.system.loadAverage.map(load => load.toFixed(2)).join(', ')}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <Network className="h-5 w-5 text-purple-600" />
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">Tráfego de Rede</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      Download: {metrics.network.download.toFixed(1)} MB/s<br />
+                      Upload: {metrics.network.upload.toFixed(1)} MB/s
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Última atualização: {new Date(metrics.timestamp).toLocaleTimeString('pt-BR')}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse" />
+                <p className="text-gray-600 dark:text-gray-400">
+                  Aguardando dados do sistema...
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Alerts Panel */}
+          <AlertsPanel alerts={alerts} onClear={clearAlerts} />
+        </div>
+
+        {/* Debug Panel (only in development) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-8 metric-card border-dashed border-gray-300">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+              Debug Panel
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button
+                onClick={() => sendMessage('ping')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Ping Server
+              </button>
+              <button
+                onClick={() => sendMessage('request_current_metrics')}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              >
+                Request Metrics
+              </button>
+              <button
+                onClick={clearAlerts}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              >
+                Clear Alerts
+              </button>
             </div>
-            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-              <h3 className="font-semibold text-green-900 dark:text-green-300 mb-2">
-                🔄 Próximos Passos
-              </h3>
-              <ul className="text-sm text-green-700 dark:text-green-400 space-y-1">
-                <li>• Conectar WebSocket</li>
-                <li>• Exibir métricas em tempo real</li>
-                <li>• Adicionar gráficos interativos</li>
-                <li>• Sistema de alertas</li>
-              </ul>
+            <div className="mt-4 text-xs">
+              <div>Connected: {status.connected ? 'Yes' : 'No'}</div>
+              <div>Client ID: {status.clientId || 'None'}</div>
+              <div>Total Clients: {status.totalClients}</div>
+              <div>Last Ping: {status.lastPing?.toLocaleTimeString() || 'Never'}</div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </main>
   )
